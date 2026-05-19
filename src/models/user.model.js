@@ -2,6 +2,11 @@ import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
+const defaultAvatarUrl = function () {
+  const name = this.fullName || this.username || "User";
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
+};
+
 const userSchema = new Schema(
   {
     username: {
@@ -16,7 +21,7 @@ const userSchema = new Schema(
       type: String,
       required: true,
       unique: true,
-      lowecase: true,
+      lowercase: true,
       trim: true,
     },
     fullName: {
@@ -28,6 +33,7 @@ const userSchema = new Schema(
     avatar: {
       type: String, // cloudinary url
       required: true,
+      default: defaultAvatarUrl,
     },
     coverImage: {
       type: String, // cloudinary url
@@ -73,3 +79,5 @@ userSchema.methods.generateRefreshToken = async function () {
     expiresIn: process.env.REFRESH_TOKEN_EXPIRATION,
   });
 };
+
+export default mongoose.model("User", userSchema);
