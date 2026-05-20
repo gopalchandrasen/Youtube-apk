@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
+import { uploadFile } from "../utils/cloudinary.util.js"
 
 const getMissingFields = (fields) => {
   return Object.entries(fields)
