@@ -1,8 +1,9 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import connectToDB from "./db/index.js";
 import { app } from "./app.js";
 import userRouter from "./routers/user.route.js";
-dotenv.config({ path: "./.env" });
+
+app.use("/api/v1/users", userRouter);
 
 connectToDB()
   .then(() => {
@@ -16,5 +17,3 @@ connectToDB()
   .catch((error) => {
     console.error("Error connecting to database:", error);
   });
-
-app.use("/api/v1/users", userRouter);
