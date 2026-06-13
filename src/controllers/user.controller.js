@@ -3,6 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { uploadFile } from "../utils/cloudinary.util.js";
 import jwt from "jsonwebtoken";
+import { changeUserPassword } from "../services/user.service.js";
 
 const getMissingFields = (fields) => {
   return Object.entries(fields)
@@ -243,4 +244,20 @@ async function refreshAccessToken(req, res) {
     );
 }
 
-export { registerUser, loginUser, logoutUser, profileUser, refreshAccessToken };
+async function changeCurrentUserPassword(req, res) {
+  const { currentPassword, newPassword } = req.body;
+
+  await changeUserPassword(req.user?._id, currentPassword, newPassword);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Password changed successfully."));
+}
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  profileUser,
+  refreshAccessToken,
+  changeCurrentUserPassword,
+};
