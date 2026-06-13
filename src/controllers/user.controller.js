@@ -224,10 +224,7 @@ async function refreshAccessToken(req, res) {
   }
 
   const newAccessToken = await user.generateAccessToken();
-  const newRefreshToken = await user.generateRefreshToken();
 
-  user.refreshToken = newRefreshToken;
-  await user.save({ validateBeforeSave: false });
   const options = {
     httpOnly: true,
     secure: true,
@@ -235,12 +232,12 @@ async function refreshAccessToken(req, res) {
 
   return res
     .status(200)
-    .cookie("refreshToken", newRefreshToken, options)
     .cookie("accessToken", newAccessToken, options)
     .json(
       new ApiResponse(
         200,
-        { accessToken: newAccessToken, refreshToken: newRefreshToken },
+        { accessToken: newAccessToken },
+
         "Access token refreshed successfully."
       )
     );
