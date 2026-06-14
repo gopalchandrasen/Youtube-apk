@@ -1,7 +1,11 @@
 import User from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import { uploadFile, deleteFile } from "../utils/cloudinary.util.js";
+import {
+  uploadFile,
+  deleteFile,
+  getCloudinaryPublicId,
+} from "../utils/cloudinary.util.js";
 import jwt from "jsonwebtoken";
 import { changeUserPassword } from "../services/user.service.js";
 
@@ -259,21 +263,30 @@ async function uploadAvatar(req, res) {
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar file is required");
   }
-  // Upload avatar to Cloudinary
+  // Upload the new avatar to Cloudinary
   const avatarUpload = await uploadFile(avatarLocalPath);
   const avatarUrl = avatarUpload?.secure_url;
-  console.log("Avatar uploaded to Cloudinary:", avatarUrl);
+  if (!avatarUrl) {
+    throw new ApiError(500, "Failed to upload avatar");
+  }
 
-  // Update user's avatar URL in the database
-  const updatedUser = await User.findByIdAndUpdate(
+  // Single DB round-trip: persist the new avatar AND get back the
+  // PRE-update document (new: false) so we know the OLD avatar URL.
+  const user = await User.findByIdAndUpdate(
     req.user._id,
     { avatar: avatarUrl },
-    { new: true, select: "-password -refreshToken" }
-  );
-  //delete the past avatar from cloudinary if it exists and is not the default avatar
-  if (updatedUser.avatar) {
-    const publicId = updatedUser.avatar.split("/").pop().split(".")[0];
-    await deleteFile(publicId);
+    { new: false }
+  ).select("-password -refreshToken");
+
+  const oldAvatarUrl = user.avatar; // previous avatar, before the overwrite
+  user.avatar = avatarUrl; // reflect the new value in the response only
+
+  // Delete the OLD avatar from Cloudinary. getCloudinaryPublicId returns null
+  // for non-Cloudinary URLs (e.g. the ui-avatars default), so the default
+  // avatar is never targeted for deletion.
+  const oldPublicId = getCloudinaryPublicId(oldAvatarUrl);
+  if (oldPublicId) {
+    await deleteFile(oldPublicId);
   }
 
   return res
@@ -281,7 +294,7 @@ async function uploadAvatar(req, res) {
     .json(
       new ApiResponse(
         200,
-        { user: updatedUser },
+        { user },
         "Avatar uploaded and updated successfully."
       )
     );
