@@ -1,7 +1,7 @@
 import User from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
-import { uploadFile } from "../utils/cloudinary.util.js";
+import { uploadFile, deleteFile } from "../utils/cloudinary.util.js";
 import jwt from "jsonwebtoken";
 import { changeUserPassword } from "../services/user.service.js";
 
@@ -253,6 +253,40 @@ async function changeCurrentUserPassword(req, res) {
     .json(new ApiResponse(200, null, "Password changed successfully."));
 }
 
+async function uploadAvatar(req, res) {
+  const avatarLocalPath = req.file?.path;
+  console.log("Received avatar file:", avatarLocalPath);
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is required");
+  }
+  // Upload avatar to Cloudinary
+  const avatarUpload = await uploadFile(avatarLocalPath);
+  const avatarUrl = avatarUpload?.secure_url;
+  console.log("Avatar uploaded to Cloudinary:", avatarUrl);
+
+  // Update user's avatar URL in the database
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    { avatar: avatarUrl },
+    { new: true, select: "-password -refreshToken" }
+  );
+  //delete the past avatar from cloudinary if it exists and is not the default avatar
+  if (updatedUser.avatar) {
+    const publicId = updatedUser.avatar.split("/").pop().split(".")[0];
+    await deleteFile(publicId);
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { user: updatedUser },
+        "Avatar uploaded and updated successfully."
+      )
+    );
+}
+
 export {
   registerUser,
   loginUser,
@@ -260,4 +294,5 @@ export {
   profileUser,
   refreshAccessToken,
   changeCurrentUserPassword,
+  uploadAvatar,
 };

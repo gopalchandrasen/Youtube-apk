@@ -42,4 +42,42 @@ async function uploadFile(filePath) {
   }
 }
 
-export { uploadFile };
+async function deleteFile(publicId) {
+  try {
+    if (!publicId) {
+      throw new Error("Public ID is required for deletion");
+    }
+    configureCloudinary();
+    const deleteResult = await cloudinary.uploader.destroy(publicId);
+    return deleteResult;
+  } catch (error) {
+    console.error("Error deleting file from Cloudinary:", error);
+    throw error;
+  }
+}
+
+function getCloudinaryPublicId(fileUrl) {
+  try {
+    if (!fileUrl) return null;
+
+    const url = new URL(fileUrl);
+    if (!url.hostname.includes("res.cloudinary.com")) return null;
+
+    const pathSegments = url.pathname.split("/").filter(Boolean);
+    const uploadIndex = pathSegments.indexOf("upload");
+    if (uploadIndex === -1) return null;
+
+    const publicIdSegments = pathSegments.slice(uploadIndex + 1);
+    if (publicIdSegments[0]?.match(/^v\d+$/)) {
+      publicIdSegments.shift();
+    }
+
+    if (publicIdSegments.length === 0) return null;
+
+    return publicIdSegments.join("/").replace(/\.[^/.]+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+export { uploadFile, deleteFile, getCloudinaryPublicId };
