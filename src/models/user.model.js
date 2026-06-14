@@ -2,9 +2,11 @@ import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
-const defaultAvatarUrl = function () {
-  const name = this.fullName || this.username || "User";
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
+// Builds the fallback avatar URL for a given display name.
+// Exported so other modules (e.g. deleteAvatar) can reset a user to the default.
+export const getDefaultAvatarUrl = (name) => {
+  const displayName = name || "User";
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0D8ABC&color=fff`;
 };
 
 const userSchema = new Schema(
@@ -33,7 +35,10 @@ const userSchema = new Schema(
     avatar: {
       type: String, // cloudinary url
       required: true,
-      default: defaultAvatarUrl,
+      // `this` is the document being created, so pass its name to the builder.
+      default: function () {
+        return getDefaultAvatarUrl(this.fullName || this.username);
+      },
     },
     coverImage: {
       type: String, // cloudinary url
@@ -80,4 +85,3 @@ userSchema.methods.generateRefreshToken = async function () {
 };
 
 export default mongoose.model("User", userSchema);
-

@@ -1,4 +1,4 @@
-import User from "../models/user.model.js";
+import User, { getDefaultAvatarUrl } from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import {
@@ -300,6 +300,39 @@ async function uploadAvatar(req, res) {
     );
 }
 
+async function deleteAvatar(req, res) {
+  // verifyJWT has already loaded the current user onto req.user,
+  // so we have the existing avatar + name without an extra query.
+  const oldAvatarUrl = req.user.avatar;
+  const oldPublicId = getCloudinaryPublicId(oldAvatarUrl);
+
+  // Nothing to delete if the user is already on the generated default avatar.
+  if (!oldPublicId) {
+    throw new ApiError(400, "No custom avatar to delete");
+  }
+
+  // Reset the stored avatar back to the generated default in a single write,
+  // returning the updated document.
+  const defaultAvatar = getDefaultAvatarUrl(
+    req.user.fullName || req.user.username
+  );
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { avatar: defaultAvatar },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  // Remove the old asset from Cloudinary after the DB is updated, so a failed
+  // delete leaves the user with a valid default avatar rather than a broken one.
+  await deleteFile(oldPublicId);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, { user }, "Avatar deleted and reset to default.")
+    );
+}
+
 export {
   registerUser,
   loginUser,
@@ -308,4 +341,5 @@ export {
   refreshAccessToken,
   changeCurrentUserPassword,
   uploadAvatar,
+  deleteAvatar,
 };

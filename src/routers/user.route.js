@@ -8,6 +8,7 @@ import {
   refreshAccessToken,
   changeCurrentUserPassword,
   uploadAvatar,
+  deleteAvatar,
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -30,4 +31,5 @@ router
 router
   .route("/upload-avatar")
   .post(verifyJWT, upload.single("avatar"), uploadAvatar);
+router.route("/avatar").delete(verifyJWT, deleteAvatar);
 export default router;
